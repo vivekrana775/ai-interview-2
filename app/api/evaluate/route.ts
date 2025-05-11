@@ -1,7 +1,7 @@
 import { groq } from "@ai-sdk/groq";
 import { NextResponse } from "next/server";
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { messages, jobDescription, cvText, timings } = await req.json();
