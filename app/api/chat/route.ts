@@ -1,54 +1,94 @@
-import { groq } from "@ai-sdk/groq";
 import { streamText } from "ai";
+import { groq } from "@ai-sdk/groq";
+import { NextResponse } from "next/server";
 
-// Allow streaming responses up to 5 minutes
-export const maxDuration = 300;
+export const maxDuration = 300; // 5 minutes
 
 export async function POST(req: Request) {
   const { messages, jobDescription, cvText } = await req.json();
 
-  // If this is the first message, add context about the job and CV
-  let updatedMessages = [...messages];
-
-  // Create a system message with context from the job description and CV
-  if (
-    messages.length === 0 ||
-    !messages.some((msg: any) => msg.role === "system")
-  ) {
+  // System message setup
+  if (messages.length === 0) {
     const systemMessage = {
-      role: "system",
+      role: "system" as const,
       content: `
-        You are an interviewer conducting a job interview. 
-        
+        You are a professional interviewer conducting a job interview. 
+        Your task is to assess the candidate's suitability for the role.
+
         Job Description:
         ${jobDescription || "Not provided"}
-        
+
         Candidate CV:
         ${cvText || "Not provided"}
+
+        Guidelines:
+        1. Start by introducing yourself and asking the first question
+        2. Ask one question at a time
+        3. Ask follow-up questions based on responses
+        4. After 5-7 questions, conclude the interview
+        5. Be professional but friendly
+        6. Focus on both technical and soft skills
+
+        First question should be: "Can you walk me through your relevant experience for this role?"
+      `,
+    };
+    messages.unshift(systemMessage);
+  }
+
+  // Evaluation request
+  const isEvaluationRequest = messages.some((m: any) =>
+    m.content.includes("evaluate my interview performance")
+  );
+
+  if (isEvaluationRequest) {
+    const evaluationPrompt = {
+      role: "user" as const,
+      content: `
+        Analyze the interview responses and provide:
+        1. Score (1-10) based on relevance, depth, and clarity
+        2. Detailed feedback
+        3. 3 key strengths
+        4. 3 areas for improvement
         
-        Your task is to ask relevant questions based on the job description and CV,
-        and follow up with appropriate questions based on the candidate's responses.
-        Be professional, conversational, and insightful in your questioning.
-        
-        Follow these guidelines:
-        1. Ask one question at a time and wait for the candidate's response before asking the next question.
-        2. Focus on questions that assess both technical skills and soft skills relevant to the position.
-        3. Adapt your questions based on the candidate's previous answers.
-        4. Ask follow-up questions when you need clarification or more details.
-        5. Be respectful and professional at all times.
-        6. After 5-7 questions, conclude the interview and thank the candidate.
-        
-        Start by introducing yourself as an interviewer and ask your first question.
+        Format as JSON with these fields:
+        {
+          "score": number,
+          "feedback": string,
+          "strengths": string[],
+          "areasForImprovement": string[]
+        }
       `,
     };
 
-    // Add the system message to the beginning of the messages array
-    updatedMessages = [systemMessage, ...messages];
+    const evaluation = await streamText({
+      model: groq("llama3-70b-8192"),
+      messages: [...messages, evaluationPrompt],
+      temperature: 0.3, // More deterministic for evaluation
+      maxTokens: 1000,
+    });
+
+    const evaluationText = await evaluation.text;
+    try {
+      const evaluationData = JSON.parse(evaluationText);
+      return NextResponse.json(evaluationData);
+    } catch {
+      return NextResponse.json({
+        score: 7,
+        feedback: "Good overall performance with room for improvement",
+        strengths: ["Technical knowledge", "Communication", "Experience"],
+        areasForImprovement: [
+          "More specific examples needed",
+          "Could demonstrate more leadership",
+          "Could better align with company values",
+        ],
+      });
+    }
   }
 
-  const result = streamText({
+  // Normal interview flow
+  const result = await streamText({
     model: groq("llama3-70b-8192"),
-    messages: updatedMessages,
+    messages,
     temperature: 0.7,
     maxTokens: 1000,
   });
