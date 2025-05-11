@@ -6,26 +6,25 @@ import { useChat } from "ai/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, Clock } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 
-type InterviewData = {
-  messages: any[];
-  evaluation?: {
-    score: number;
-    feedback: string;
-    strengths: string[];
-    areasForImprovement: string[];
-  };
+type TimingMetric = {
+  questionId: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
 };
 
 export default function InterviewSession() {
   const router = useRouter();
   const [jobDescription, setJobDescription] = useState("");
   const [cvText, setCvText] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [interviewComplete, setInterviewComplete] = useState(false);
+  const [timings, setTimings] = useState<TimingMetric[]>([]);
+  const [currentQuestionId, setCurrentQuestionId] = useState("");
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const questionStartTime = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -33,151 +32,185 @@ export default function InterviewSession() {
     input,
     handleInputChange,
     handleSubmit,
-    isLoading: isChatLoading,
-    setMessages,
-    stop,
+    isLoading: isResponding,
+    append,
   } = useChat({
-    api: "/api/chat",
+    api: "/api/interview",
     initialMessages: [],
     body: {
       jobDescription,
       cvText,
+      currentTimings: timings,
+    },
+    onResponse: (response) => {
+      const questionId = `q-${Date.now()}`;
+      setCurrentQuestionId(questionId);
+      questionStartTime.current = Date.now();
     },
     onFinish: async (message) => {
-      // Check if interview should end (after 5-7 questions)
-      const assistantMessages = messages.filter((m) => m.role === "assistant");
-      if (assistantMessages.length >= 5 && !interviewComplete) {
+      // Record timing for the last answer
+      if (questionStartTime.current && currentQuestionId) {
+        setTimings((prev) => [
+          ...prev,
+          {
+            questionId: currentQuestionId,
+            startTime: questionStartTime.current,
+            endTime: Date.now(),
+            duration: Date.now() - questionStartTime.current,
+          },
+        ]);
+      }
+
+      // Auto-trigger evaluation after 5 questions
+      if (messages.filter((m) => m.role === "assistant").length >= 5) {
         await evaluateInterview();
       }
     },
   });
 
   const evaluateInterview = async () => {
-    setInterviewComplete(true);
-    const evaluationMessage = {
-      role: "user" as const,
-      content:
-        "Please evaluate my interview performance and provide a score from 1-10 along with detailed feedback, strengths, and areas for improvement based on my responses.",
-    };
+    setIsEvaluating(true);
+    try {
+      const response = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages,
+          jobDescription,
+          cvText,
+          timings,
+        }),
+      });
 
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messages: [...messages, evaluationMessage],
-        jobDescription,
-        cvText,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Evaluation failed");
+      const evaluation = await response.json();
+      localStorage.setItem("interviewEvaluation", JSON.stringify(evaluation));
+      router.push("/interview/results");
+    } catch (error) {
+      toast({
+        title: "Evaluation failed",
+        description: "Could not generate results. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEvaluating(false);
     }
-
-    const data = await response.json();
-    const interviewData: InterviewData = {
-      messages: [...messages, { role: "assistant", content: data.content }],
-      evaluation: {
-        score: data.score || 7,
-        feedback: data.feedback || "No feedback generated",
-        strengths: data.strengths || [],
-        areasForImprovement: data.areasForImprovement || [],
-      },
-    };
-
-    localStorage.setItem("interviewResults", JSON.stringify(interviewData));
-    router.push("/interview/results");
   };
 
   useEffect(() => {
-    const storedJobDescription = localStorage.getItem("jobDescription");
-    const storedCvText = localStorage.getItem("cvText");
+    // Load interview context
+    const jd = localStorage.getItem("jobDescription");
+    const cv = localStorage.getItem("cvText");
 
-    if (!storedJobDescription || !storedCvText) {
+    if (!jd || !cv) {
       toast({
-        title: "Missing interview data",
-        description: "Please set up your interview first",
+        title: "Setup required",
+        description: "Please configure your interview first",
         variant: "destructive",
       });
       router.push("/interview/setup");
       return;
     }
 
-    setJobDescription(storedJobDescription);
-    setCvText(storedCvText);
-    setIsLoading(false);
-  }, [router]);
+    setJobDescription(jd);
+    setCvText(cv);
+
+    // Start interview immediately
+    append({
+      role: "user",
+      content:
+        "Start the interview with the first question based on my CV and the job description.",
+    });
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 max-w-4xl">
-        <p>Preparing your interview questions...</p>
-      </div>
-    );
-  }
+  const handleAnswerSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Record timing before submitting
+    if (questionStartTime.current && currentQuestionId) {
+      setTimings((prev) => [
+        ...prev,
+        {
+          questionId: currentQuestionId,
+          startTime: questionStartTime.current,
+          endTime: Date.now(),
+          duration: Date.now() - questionStartTime.current,
+        },
+      ]);
+    }
+
+    handleSubmit(e);
+  };
 
   return (
-    <div className="container mx-auto py-4 max-w-4xl h-screen flex flex-col">
-      <div className="mb-4 flex items-center">
-        <Link href="/interview/setup" className="mr-4">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Interview Session</h1>
-        <div className="ml-auto text-sm text-gray-500">
-          Questions: {messages.filter((m) => m.role === "assistant").length}/7
+    <div className="container mx-auto p-4 max-w-3xl flex flex-col h-screen">
+      <header className="flex items-center gap-4 mb-6">
+        <h1 className="text-2xl font-bold">AI Interview Session</h1>
+        <div className="ml-auto flex items-center text-sm text-muted-foreground">
+          <Clock className="mr-1 h-4 w-4" />
+          {timings.length > 0 && (
+            <span>
+              Avg. response:{" "}
+              {Math.round(
+                timings.reduce((sum, t) => sum + t.duration, 0) /
+                  timings.length /
+                  1000
+              )}
+              s
+            </span>
+          )}
         </div>
-      </div>
+      </header>
 
-      <Card className="flex-1 flex flex-col overflow-hidden shadow-md">
-        <div className="flex-1 overflow-y-auto p-4">
-          {messages.map((message) => (
+      <Card className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((m) => (
             <div
-              key={message.id}
-              className={`mb-4 p-4 rounded-lg ${
-                message.role === "user"
-                  ? "bg-blue-50 ml-auto max-w-[80%]"
-                  : "bg-gray-50 mr-auto max-w-[80%]"
+              key={m.id}
+              className={`p-4 rounded-lg max-w-[90%] ${
+                m.role === "user"
+                  ? "ml-auto bg-primary text-primary-foreground"
+                  : "mr-auto bg-muted"
               }`}
             >
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              {m.content}
             </div>
           ))}
-          {isChatLoading && (
-            <div className="mb-4 p-4 rounded-lg bg-gray-50 mr-auto max-w-[80%]">
-              <p>Thinking...</p>
+          {(isResponding || isEvaluating) && (
+            <div className="mr-auto p-4 rounded-lg bg-muted max-w-[90%]">
+              <div className="flex gap-2">
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-100" />
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-200" />
+              </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        {!interviewComplete && (
-          <div className="p-4 border-t">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Textarea
-                placeholder="Type your answer here..."
-                value={input}
-                onChange={handleInputChange}
-                disabled={isChatLoading}
-                className="min-h-[80px] resize-none flex-1"
-              />
-              <Button
-                type="submit"
-                disabled={input.trim() === "" || isChatLoading}
-                className="h-full"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+        <form onSubmit={handleAnswerSubmit} className="p-4 border-t">
+          <div className="flex gap-2">
+            <Textarea
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Type your answer..."
+              className="min-h-[100px] resize-none"
+              disabled={isResponding || isEvaluating}
+              required
+            />
+            <Button
+              type="submit"
+              disabled={!input.trim() || isResponding || isEvaluating}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-        )}
+        </form>
       </Card>
     </div>
   );
