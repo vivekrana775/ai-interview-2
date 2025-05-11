@@ -1,112 +1,126 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Download, Home, Share } from "lucide-react"
-import { ScoreBreakdown } from "@/components/score-breakdown"
-import { ResponseTimeAnalysis } from "@/components/response-time-analysis"
-import { InterviewTranscript } from "@/components/interview-transcript"
-import { ResumeMatchAnalysis } from "@/components/resume-match-analysis"
-import { groq } from "@ai-sdk/groq"
-import { generateText } from "ai"
-import { toast } from "@/components/ui/use-toast"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, Home, Share } from "lucide-react";
+import { ScoreBreakdown } from "@/components/score-breakdown";
+import { ResponseTimeAnalysis } from "@/components/response-time-analysis";
+import { InterviewTranscript } from "@/components/interview-transcript";
+import { ResumeMatchAnalysis } from "@/components/resume-match-analysis";
+import { groq } from "@ai-sdk/groq";
+import { generateText } from "ai";
+import { toast } from "@/components/ui/use-toast";
 
 type Message = {
-  id: string
-  role: "system" | "user" | "assistant"
-  content: string
-  timestamp?: number
-  responseTime?: number
-}
+  id: string;
+  role: "system" | "user" | "assistant";
+  content: string;
+  timestamp?: number;
+  responseTime?: number;
+};
 
 type ScoreCategory = {
-  name: string
-  score: number
-  feedback: string
-}
+  name: string;
+  score: number;
+  feedback: string;
+};
 
 type ScoringResult = {
-  scores: ScoreCategory[]
-  overallScore: number
-  summary: string
-}
+  scores: ScoreCategory[];
+  overallScore: number;
+  summary: string;
+};
 
 export default function InterviewResults() {
-  const router = useRouter()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [responseTimes, setResponseTimes] = useState<Record<string, number>>({})
-  const [isLoading, setIsLoading] = useState(true)
-  const [scores, setScores] = useState<ScoreCategory[]>([])
-  const [overallScore, setOverallScore] = useState(0)
-  const [summary, setSummary] = useState("")
-  const [jobDescription, setJobDescription] = useState("")
-  const [cvText, setCvText] = useState("")
-  const [resumeAnalysis, setResumeAnalysis] = useState<any>(null)
+  const router = useRouter();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [responseTimes, setResponseTimes] = useState<Record<string, number>>(
+    {}
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [scores, setScores] = useState<ScoreCategory[]>([]);
+  const [overallScore, setOverallScore] = useState(0);
+  const [summary, setSummary] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+  const [cvText, setCvText] = useState("");
+  const [resumeAnalysis, setResumeAnalysis] = useState<any>(null);
 
   useEffect(() => {
     // Load interview data from localStorage
-    const interviewDataString = localStorage.getItem("interviewData")
-    const storedJobDescription = localStorage.getItem("jobDescription")
-    const storedCvText = localStorage.getItem("cvText")
-    const storedResumeAnalysis = localStorage.getItem("resumeAnalysis")
+    const interviewDataString = localStorage.getItem("interviewData");
+    const storedJobDescription = localStorage.getItem("jobDescription");
+    const storedCvText = localStorage.getItem("cvText");
+    const storedResumeAnalysis = localStorage.getItem("resumeAnalysis");
 
     if (!interviewDataString || !storedJobDescription || !storedCvText) {
       // Redirect back to home if no data
-      router.push("/")
-      return
+      router.push("/");
+      return;
     }
 
-    setJobDescription(storedJobDescription)
-    setCvText(storedCvText)
+    setJobDescription(storedJobDescription);
+    setCvText(storedCvText);
 
     if (storedResumeAnalysis) {
       try {
-        setResumeAnalysis(JSON.parse(storedResumeAnalysis))
+        setResumeAnalysis(JSON.parse(storedResumeAnalysis));
       } catch (e) {
-        console.error("Error parsing resume analysis:", e)
+        console.error("Error parsing resume analysis:", e);
       }
     }
 
     try {
-      const interviewData = JSON.parse(interviewDataString)
+      const interviewData = JSON.parse(interviewDataString);
 
       // Extract messages and response times
-      const extractedMessages = interviewData.filter((item) => item.role !== undefined) as Message[]
-      const responseTimesObj = interviewData.find((item) => item.responseTimes !== undefined)?.responseTimes || {}
+      const extractedMessages = interviewData.filter(
+        (item: any) => item.role !== undefined
+      ) as Message[];
+      const responseTimesObj =
+        interviewData.find((item: any) => item.responseTimes !== undefined)
+          ?.responseTimes || {};
 
-      setMessages(extractedMessages)
-      setResponseTimes(responseTimesObj)
+      setMessages(extractedMessages);
+      setResponseTimes(responseTimesObj);
 
       // Generate AI scoring
-      generateInterviewScoring(extractedMessages, responseTimesObj, storedJobDescription, storedCvText)
+      generateInterviewScoring(
+        extractedMessages,
+        responseTimesObj,
+        storedJobDescription,
+        storedCvText
+      );
     } catch (error) {
-      console.error("Error parsing interview data:", error)
-      router.push("/")
+      console.error("Error parsing interview data:", error);
+      router.push("/");
     }
-  }, [router])
+  }, [router]);
 
   const generateInterviewScoring = async (
     interviewMessages: Message[],
     responseTimes: Record<string, number>,
     jobDesc: string,
-    cv: string,
+    cv: string
   ) => {
     try {
       // Format the conversation for the AI
       const conversation = interviewMessages
         .filter((msg) => msg.role !== "system")
         .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
-        .join("\n\n")
+        .join("\n\n");
 
       // Format response times
       const responseTimeText = Object.entries(responseTimes)
-        .map(([questionNum, time]) => `Question ${questionNum}: ${(time / 1000).toFixed(1)}s`)
-        .join("\n")
+        .map(
+          ([questionNum, time]) =>
+            `Question ${questionNum}: ${(time / 1000).toFixed(1)}s`
+        )
+        .join("\n");
 
       // Create the prompt for scoring
       const prompt = `
@@ -145,33 +159,33 @@ export default function InterviewResults() {
           "overallScore": 82,
           "summary": "Overall summary here"
         }
-      `
+      `;
 
       // Call the AI to generate the scoring
       const { text } = await generateText({
         model: groq("llama3-70b-8192"),
         messages: [{ role: "user", content: prompt }],
-      })
+      });
 
       // Parse the JSON response
       try {
-        const result = JSON.parse(text) as ScoringResult
-        setScores(result.scores)
-        setOverallScore(result.overallScore)
-        setSummary(result.summary)
+        const result = JSON.parse(text) as ScoringResult;
+        setScores(result.scores);
+        setOverallScore(result.overallScore);
+        setSummary(result.summary);
       } catch (error) {
-        console.error("Error parsing AI response:", error)
+        console.error("Error parsing AI response:", error);
         // Fallback to default scoring if parsing fails
-        setDefaultScoring()
+        setDefaultScoring();
       }
 
-      setIsLoading(false)
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error generating interview scoring:", error)
-      setDefaultScoring()
-      setIsLoading(false)
+      console.error("Error generating interview scoring:", error);
+      setDefaultScoring();
+      setIsLoading(false);
     }
-  }
+  };
 
   const setDefaultScoring = () => {
     // Fallback scoring in case of API failure
@@ -179,36 +193,41 @@ export default function InterviewResults() {
       {
         name: "Technical Acumen",
         score: 75,
-        feedback: "The candidate demonstrated adequate technical knowledge relevant to the position.",
+        feedback:
+          "The candidate demonstrated adequate technical knowledge relevant to the position.",
       },
       {
         name: "Communication Skills",
         score: 80,
-        feedback: "Good communication skills. Articulated thoughts clearly in most responses.",
+        feedback:
+          "Good communication skills. Articulated thoughts clearly in most responses.",
       },
       {
         name: "Problem-Solving & Adaptability",
         score: 70,
-        feedback: "Showed reasonable problem-solving approach. Could improve on considering alternative solutions.",
+        feedback:
+          "Showed reasonable problem-solving approach. Could improve on considering alternative solutions.",
       },
       {
         name: "Cultural Fit & Soft Skills",
         score: 85,
-        feedback: "Appears to align well with company values. Demonstrated teamwork and empathy.",
+        feedback:
+          "Appears to align well with company values. Demonstrated teamwork and empathy.",
       },
       {
         name: "Response Time",
         score: 75,
-        feedback: "Average response time was acceptable. Some complex questions took longer to answer.",
+        feedback:
+          "Average response time was acceptable. Some complex questions took longer to answer.",
       },
-    ]
+    ];
 
-    setScores(defaultScores)
-    setOverallScore(77)
+    setScores(defaultScores);
+    setOverallScore(77);
     setSummary(
-      "The candidate demonstrated good overall potential for the role with particular strengths in cultural fit and communication. There are some areas for improvement in technical depth and problem-solving approach.",
-    )
-  }
+      "The candidate demonstrated good overall potential for the role with particular strengths in cultural fit and communication. There are some areas for improvement in technical depth and problem-solving approach."
+    );
+  };
 
   const handleDownloadReport = () => {
     // Create a text report
@@ -227,7 +246,7 @@ ${scores
     (category) => `
 ${category.name}: ${category.score}%
 ${category.feedback}
-`,
+`
   )
   .join("\n")}
 
@@ -256,31 +275,32 @@ ${messages
     (m) => `
 ${m.role.toUpperCase()}: ${m.content}
 ${m.responseTime ? `Response time: ${(m.responseTime / 1000).toFixed(1)}s` : ""}
-`,
+`
   )
   .join("\n")}
-    `.trim()
+    `.trim();
 
     // Create a blob and download link
-    const blob = new Blob([report], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "interview-report.txt"
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([report], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "interview-report.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const handleShareResults = () => {
     // In a real app, this would generate a shareable link
     // For now, we'll just show a toast
     toast({
       title: "Share link generated",
-      description: "A shareable link would be generated here in a real application.",
-    })
-  }
+      description:
+        "A shareable link would be generated here in a real application.",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -296,18 +316,23 @@ ${m.responseTime ? `Response time: ${(m.responseTime / 1000).toFixed(1)}s` : ""}
 
             <div className="text-center space-y-2">
               <h2 className="text-xl font-semibold">Scoring Interview</h2>
-              <p className="text-muted-foreground">Analyzing responses and calculating scores...</p>
+              <p className="text-muted-foreground">
+                Analyzing responses and calculating scores...
+              </p>
             </div>
           </div>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <Link href="/" className="inline-flex items-center text-sm hover:underline">
+        <Link
+          href="/"
+          className="inline-flex items-center text-sm hover:underline"
+        >
           <Home className="mr-2 h-4 w-4" /> Back to home
         </Link>
         <div className="flex space-x-2">
@@ -367,8 +392,12 @@ ${m.responseTime ? `Response time: ${(m.responseTime / 1000).toFixed(1)}s` : ""}
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="h-12 w-12 text-muted-foreground mb-4">📄</div>
-                  <h3 className="text-lg font-medium mb-2">Resume analysis not available</h3>
-                  <p className="text-muted-foreground mb-4">Resume analysis data is not available for this interview</p>
+                  <h3 className="text-lg font-medium mb-2">
+                    Resume analysis not available
+                  </h3>
+                  <p className="text-muted-foreground mb-4">
+                    Resume analysis data is not available for this interview
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -378,7 +407,10 @@ ${m.responseTime ? `Response time: ${(m.responseTime / 1000).toFixed(1)}s` : ""}
         <TabsContent value="timing">
           <Card className="shadow-md">
             <CardContent className="pt-6">
-              <ResponseTimeAnalysis messages={messages} responseTimes={responseTimes} />
+              <ResponseTimeAnalysis
+                messages={messages}
+                responseTimes={responseTimes}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -392,5 +424,5 @@ ${m.responseTime ? `Response time: ${(m.responseTime / 1000).toFixed(1)}s` : ""}
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
