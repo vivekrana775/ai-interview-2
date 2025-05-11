@@ -1,7 +1,7 @@
 import { streamText } from "ai";
 import { groq } from "@ai-sdk/groq";
 
-export const maxDuration = 60;
+export const maxDuration = 59;
 
 export async function POST(req: Request) {
   const { messages, jobDescription, cvText, currentTimings } = await req.json();
