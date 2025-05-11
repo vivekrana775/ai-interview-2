@@ -1,26 +1,24 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, PlusCircle, Eye } from "lucide-react"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, PlusCircle, Eye } from "lucide-react";
 
 export default function InterviewsPage() {
-  const [interviews, setInterviews] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [interviews, setInterviews] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, this would fetch from a database
-    // For now, we'll just check if there's a recent interview in localStorage
-    const interviewId = localStorage.getItem("interviewId")
-    const jobDescription = localStorage.getItem("jobDescription")
-    const cvText = localStorage.getItem("cvText")
-    const interviewData = localStorage.getItem("interviewData")
+    const interviewId = localStorage.getItem("interviewId");
+    const jobDescription = localStorage.getItem("jobDescription");
+    const cvText = localStorage.getItem("cvText");
+    const interviewData = localStorage.getItem("interviewData");
 
     if (interviewId && jobDescription && cvText) {
-      const hasResults = !!interviewData
+      const hasResults = !!interviewData;
 
       setInterviews([
         {
@@ -29,18 +27,20 @@ export default function InterviewsPage() {
           status: hasResults ? "completed" : "in-progress",
           jobDescription: jobDescription.substring(0, 100) + "...",
         },
-      ])
+      ]);
     }
 
-    setIsLoading(false)
-  }, [])
+    setIsLoading(false);
+  }, []);
 
   return (
     <div className="container mx-auto py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Interviews</h1>
-          <p className="text-muted-foreground mt-1">View and manage your interviews</p>
+          <p className="text-muted-foreground mt-1">
+            View and manage your interviews
+          </p>
         </div>
         <Link href="/interview/setup">
           <Button>
@@ -49,7 +49,10 @@ export default function InterviewsPage() {
         </Link>
       </div>
 
-      <Link href="/" className="inline-flex items-center text-sm hover:underline mb-6">
+      <Link
+        href="/"
+        className="inline-flex items-center text-sm hover:underline mb-6"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to home
       </Link>
 
@@ -75,7 +78,9 @@ export default function InterviewsPage() {
         <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50 rounded-lg border">
           <div className="h-12 w-12 text-muted-foreground mb-4">📋</div>
           <h3 className="text-lg font-medium mb-2">No interviews yet</h3>
-          <p className="text-muted-foreground mb-4">Start by creating your first interview</p>
+          <p className="text-muted-foreground mb-4">
+            Start by creating your first interview
+          </p>
           <Link href="/interview/setup">
             <Button>Create Interview</Button>
           </Link>
@@ -83,21 +88,32 @@ export default function InterviewsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {interviews.map((interview) => (
-            <Card key={interview.id} className="overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <Card
+              key={interview.id}
+              className="overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            >
               <CardContent className="p-0">
                 <div className="p-6">
                   <h3 className="font-semibold mb-1 truncate">
                     Interview {new Date(interview.date).toLocaleDateString()}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{interview.jobDescription}</p>
+                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                    {interview.jobDescription}
+                  </p>
                   <div className="flex justify-between items-center">
                     <Badge
-                      variant={interview.status === "completed" ? "default" : "outline"}
+                      variant={
+                        interview.status === "completed" ? "default" : "outline"
+                      }
                       className={
-                        interview.status === "completed" ? "bg-green-100 text-green-800 hover:bg-green-200" : ""
+                        interview.status === "completed"
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : ""
                       }
                     >
-                      {interview.status === "completed" ? "Completed" : "In Progress"}
+                      {interview.status === "completed"
+                        ? "Completed"
+                        : "In Progress"}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       {new Date(interview.date).toLocaleDateString()}
@@ -106,10 +122,18 @@ export default function InterviewsPage() {
                 </div>
               </CardContent>
               <CardFooter className="border-t p-4 flex justify-between">
-                <Link href={interview.status === "completed" ? `/interview/results` : `/interview/session`}>
+                <Link
+                  href={
+                    interview.status === "completed"
+                      ? `/interview/results`
+                      : `/interview/session`
+                  }
+                >
                   <Button variant="outline" size="sm">
                     <Eye className="mr-2 h-4 w-4" />
-                    {interview.status === "completed" ? "View Results" : "Continue"}
+                    {interview.status === "completed"
+                      ? "View Results"
+                      : "Continue"}
                   </Button>
                 </Link>
               </CardFooter>
@@ -118,5 +142,5 @@ export default function InterviewsPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

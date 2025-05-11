@@ -6,8 +6,6 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const { messages, jobDescription, cvText, currentTimings } = await req.json();
 
-  // System prompt for question generation
-  // System prompt for question generation
   const systemPrompt = `You are a professional interviewer conducting a structured interview. 
 
     Job Description:
@@ -39,7 +37,7 @@ export async function POST(req: Request) {
         },
       ],
       temperature: 0.7,
-    }).toDataStreamResponse(); // Fixed here
+    }).toDataStreamResponse();
   }
 
   // Follow-up questions
@@ -48,5 +46,5 @@ export async function POST(req: Request) {
     system: systemPrompt,
     messages,
     temperature: 0.7,
-  }).toDataStreamResponse(); // Fixed here
+  }).toDataStreamResponse();
 }

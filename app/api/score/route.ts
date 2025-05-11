@@ -13,13 +13,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // Format the conversation for the AI
   const conversation = messages
     .filter((msg: any) => msg.role !== "system")
     .map((msg: any) => `${msg.role.toUpperCase()}: ${msg.content}`)
     .join("\n\n");
 
-  // Format response times
   const responseTimeText = Object.entries(responseTimes)
     .map(
       ([questionNum, time]: any) =>
@@ -71,14 +69,12 @@ export async function POST(req: Request) {
       messages: [{ role: "user", content: prompt }],
     });
 
-    // Try to parse the response as JSON
     try {
       const result = JSON.parse(text);
       return Response.json(result);
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
 
-      // Return a default response if parsing fails
       const defaultResult = {
         scores: [
           {

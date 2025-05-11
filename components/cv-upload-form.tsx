@@ -86,13 +86,11 @@ export function CVUploadForm({
       return;
     }
 
-    // For this demo, we'll just read text files
-    // In a real app, you'd use a library to parse PDFs and DOCXs
     if (file.type === "text/plain") {
       const text = await file.text();
       setCvText(text);
       setError("");
-      setAnalysis(null); // Reset analysis when new file is uploaded
+      setAnalysis(null);
     } else {
       const formData = new FormData();
       formData.append("file", file); // Your PDF file
@@ -107,14 +105,14 @@ export function CVUploadForm({
 
       setCvText(data?.extractedDetails);
       setError("");
-      setAnalysis(null); // Reset analysis when new file is uploaded
+      setAnalysis(null);
     }
   };
 
   const handleManualEdit = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCvText(e.target.value);
     setIsSubmitted(false);
-    setAnalysis(null); // Reset analysis when CV is edited
+    setAnalysis(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
