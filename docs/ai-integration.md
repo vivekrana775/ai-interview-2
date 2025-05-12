@@ -67,27 +67,6 @@ The AI evaluates the candidate on:
 4. Cultural Fit & Soft Skills
 5. Response Time
 
-## Data Integration
-
-### Job Description and CV Integration
-
-1. The job description and CV are stored in localStorage during the interview setup
-2. They are passed to the AI in each API call to provide context
-3. The AI uses this information to generate relevant questions and evaluate responses
-
-### Conversation History Integration
-
-1. The full conversation history is maintained in the client
-2. For follow-up questions, the history is sent to the AI to provide context
-3. For scoring, the complete conversation is analyzed
-
-### Timing Metrics Integration
-
-1. Response times are captured for each question
-2. The system records when a question is asked and when the user submits their answer
-3. These timing metrics are included in the scoring prompt
-4. The AI considers both the speed and thoughtfulness of responses in its evaluation
-
 ## Scoring Criteria
 
 The scoring algorithm evaluates candidates on five key dimensions:
@@ -149,6 +128,3 @@ Planned enhancements to the AI integration:
 3. Implementing multi-language support
 4. Adding personality assessment
 5. Incorporating industry-specific evaluation criteria
-   \`\`\`
-
-Finally, let's create a test configuration file:

@@ -24,6 +24,7 @@ export default function InterviewSession() {
   const [timings, setTimings] = useState<TimingMetric[]>([]);
   const [currentQuestionId, setCurrentQuestionId] = useState("");
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [violationCount, setViolationCount] = useState(0);
   const questionStartTime = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +69,69 @@ export default function InterviewSession() {
     },
   });
 
+  // Handle visibility change (tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        setViolationCount((prev) => {
+          const newCount = prev + 1;
+          if (newCount >= 3) {
+            // End interview after 3 violations
+            toast({
+              title: "Interview Terminated",
+              description:
+                "You switched tabs too many times. The interview has been ended.",
+              variant: "destructive",
+            });
+            evaluateInterview();
+          } else {
+            toast({
+              title: "Warning",
+              description: `Please stay on this tab during the interview. Warning ${newCount}/3`,
+              variant: "destructive",
+            });
+          }
+          return newCount;
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
+  // Prevent navigation away
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue =
+        "Are you sure you want to leave? Your interview progress may be lost.";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // Prevent back button
+  useEffect(() => {
+    const handleBackButton = (e: PopStateEvent) => {
+      e.preventDefault();
+      toast({
+        title: "Warning",
+        description:
+          "Please use the navigation within the interview interface.",
+        variant: "destructive",
+      });
+      window.history.pushState(null, "", window.location.pathname);
+    };
+
+    window.history.pushState(null, "", window.location.pathname);
+    window.addEventListener("popstate", handleBackButton);
+    return () => window.removeEventListener("popstate", handleBackButton);
+  }, []);
+
   const evaluateInterview = async () => {
     setIsEvaluating(true);
     try {
@@ -81,6 +145,7 @@ export default function InterviewSession() {
           jobDescription,
           cvText,
           timings,
+          violationCount,
         }),
       });
 
@@ -162,6 +227,11 @@ export default function InterviewSession() {
                   1000
               )}
               s
+            </span>
+          )}
+          {violationCount > 0 && (
+            <span className="ml-4 text-destructive">
+              Warnings: {violationCount}/3
             </span>
           )}
         </div>
