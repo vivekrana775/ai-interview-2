@@ -64,9 +64,7 @@ export default function InterviewSession() {
 
       // Auto-trigger evaluation after 5 questions
       if (messages.filter((m) => m.role === "assistant").length >= 5) {
-        setTimeout(async () => {
-          await evaluateInterview();
-        }, 10000);
+        await evaluateInterview();
       }
     },
   });
