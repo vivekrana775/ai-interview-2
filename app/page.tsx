@@ -25,52 +25,6 @@ export default function Home() {
             comprehensive scoring and analysis.
           </p>
 
-          <div className="grid gap-6 md:grid-cols-2 max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg border p-6 shadow-sm hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold mb-2">For Recruiters</h3>
-              <p className="text-muted-foreground mb-4">
-                Streamline your interview process with generated questions
-                tailored to both the job and candidate.
-              </p>
-              <ul className="space-y-2 mb-4 text-left">
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Personalized question generation</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Automated interview scoring</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Response time analysis</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-white rounded-lg border p-6 shadow-sm hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-semibold mb-2">For Candidates</h3>
-              <p className="text-muted-foreground mb-4">
-                Experience a fair and relevant interview process tailored to
-                your skills and experience.
-              </p>
-              <ul className="space-y-2 mb-4 text-left">
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Relevant questions based on your CV</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Dynamic follow-up questions</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2 text-green-500">✓</span>
-                  <span>Comprehensive feedback</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
           <Link href="/interview/setup" className="inline-block">
             <Button size="lg" className="mt-4 group">
               Start New Interview{" "}

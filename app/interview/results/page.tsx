@@ -41,22 +41,94 @@ type Evaluation = {
   overallScore: number;
   strengths: string[];
   improvements: string[];
-  summary: string;
+  detailedAnalysis: {
+    technical: string;
+    communication: string;
+    responsiveness: string;
+    problemSolving: string;
+    culturalFit: string;
+  };
+  recommendation: string;
   metrics: {
-    responseTime: number;
+    responseTime: {
+      average: number;
+      range: [number, number];
+      unit: string;
+    };
+    scoringWeights: {
+      technical: number;
+      communication: number;
+      responsiveness: number;
+      problemSolving: number;
+      culturalFit: number;
+    };
   };
 };
 
 export default function ResultsPage() {
   const [results, setResults] = useState<Evaluation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedResults = localStorage.getItem("interviewEvaluation");
-    if (savedResults) setResults(JSON.parse(savedResults));
+    const fetchResults = async () => {
+      try {
+        const savedResults = localStorage.getItem("interviewEvaluation");
+        if (savedResults) {
+          const parsedResults = JSON.parse(savedResults);
+
+          // Validate the results structure
+          if (!parsedResults.scores || !parsedResults.overallScore) {
+            throw new Error("Invalid results format");
+          }
+
+          setResults(parsedResults);
+        } else {
+          throw new Error("No evaluation results found");
+        }
+      } catch (err) {
+        console.error("Failed to load results:", err);
+        setError(err instanceof Error ? err.message : "Failed to load results");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
   }, []);
 
-  if (!results)
-    return <div className="p-8 text-center">Loading results...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+          <p>Analyzing your interview performance...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !results) {
+    return (
+      <div className="container mx-auto p-4 max-w-4xl space-y-6">
+        <Link href="/interview/setup">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Setup
+          </Button>
+        </Link>
+
+        <Card className="text-center p-8">
+          <h2 className="text-2xl font-bold mb-4">Evaluation Unavailable</h2>
+          <p className="text-muted-foreground mb-6">
+            {error || "No evaluation results were found"}
+          </p>
+          <Link href="/interview/setup">
+            <Button>Start New Interview</Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   const chartData = {
     labels: [
@@ -111,12 +183,18 @@ export default function ResultsPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <h3 className="font-medium">Average Response Time</h3>
-              <p className="text-2xl">{results.metrics.responseTime} seconds</p>
+              <h3 className="font-medium">Response Time</h3>
+              <p className="text-2xl">
+                {results.metrics.responseTime.average} seconds
+                <span className="text-sm text-muted-foreground ml-2">
+                  (range: {results.metrics.responseTime.range[0]}-
+                  {results.metrics.responseTime.range[1]}s)
+                </span>
+              </p>
             </div>
             <div>
-              <h3 className="font-medium">Summary</h3>
-              <p className="whitespace-pre-line">{results.summary}</p>
+              <h3 className="font-medium">Recommendation</h3>
+              <p className="font-semibold text-lg">{results.recommendation}</p>
             </div>
           </div>
         </CardContent>
@@ -155,6 +233,44 @@ export default function ResultsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <h2 className="text-xl font-semibold">Detailed Analysis</h2>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h3 className="font-medium">Technical Skills</h3>
+            <p className="text-muted-foreground whitespace-pre-line">
+              {results.detailedAnalysis.technical}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium">Communication</h3>
+            <p className="text-muted-foreground whitespace-pre-line">
+              {results.detailedAnalysis.communication}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium">Responsiveness</h3>
+            <p className="text-muted-foreground whitespace-pre-line">
+              {results.detailedAnalysis.responsiveness}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium">Problem Solving</h3>
+            <p className="text-muted-foreground whitespace-pre-line">
+              {results.detailedAnalysis.problemSolving}
+            </p>
+          </div>
+          <div>
+            <h3 className="font-medium">Cultural Fit</h3>
+            <p className="text-muted-foreground whitespace-pre-line">
+              {results.detailedAnalysis.culturalFit}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <CardFooter className="flex justify-end">
         <Link href="/interview/setup">
