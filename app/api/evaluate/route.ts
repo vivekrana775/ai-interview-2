@@ -125,7 +125,7 @@ export async function POST(req: Request) {
 
     let evaluation: any = "";
 
-    if (data?.choices[0]) {
+    if (data.choices) {
       evaluation = JSON.parse(data.choices[0].message.content);
     }
 
