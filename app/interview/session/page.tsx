@@ -66,7 +66,7 @@ export default function InterviewSession() {
       if (messages.filter((m) => m.role === "assistant").length >= 5) {
         setTimeout(async () => {
           await evaluateInterview();
-        }, 10000);
+        }, 15000);
       }
     },
   });
