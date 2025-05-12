@@ -1,31 +1,37 @@
-# Dynamic Interview Assistant
+# AI Interview System
 
-A Next.js application that uses AI to conduct personalized job interviews based on job descriptions and candidate CVs, with comprehensive scoring and analysis.
+![System Architecture](https://i.imgur.com/JyQ8X9E.png)
 
-## Features
+A Next.js application that automates technical interviews by generating context-aware questions from job descriptions and candidate CVs, with real-time evaluation and scoring.
 
-- Upload job descriptions and candidate CVs
-- Generate personalized interview questions
-- Conduct dynamic interviews with follow-up questions
-- Track response times for each question
-- Provide comprehensive scoring and analysis
-- Analyze resume match against job requirements
+## Key Features
 
-## Tech Stack
+- 🎯 **JD/CV-Powered Questions** - Generates technical/behavioral questions tailored to both job requirements and candidate background
+- ⏱ **Timing Analytics** - Measures response times and incorporates them into scoring
+- 📊 **5-Dimension Evaluation** - Scores candidates on Technical, Communication, Problem-Solving, Cultural Fit, and Responsiveness
+- 🔄 **Adaptive Follow-ups** - Dynamically adjusts questions based on previous answers
+- 📱 **Responsive Interface** - Works across desktop and mobile devices
 
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- shadcn/ui components
-- GROQ AI integration
-- Vercel deployment
+## System Architecture
 
-## Getting Started
+```mermaid
+sequenceDiagram
+    participant UI as Frontend (Next.js)
+    participant API as Serverless API
+    participant AI as Groq (Llama3-70b)
+    participant DB as LocalStorage
 
-### Prerequisites
-
-- Node.js 18+ and npm/yarn/pnpm
-- GROQ API key
+    UI->>API: Submit JD + CV
+    API->>AI: Generate first question
+    AI-->>UI: Display Q1
+    loop 5 Questions
+        UI->>API: Send answer + timing
+        API->>AI: Generate follow-up
+        AI-->>UI: Next question
+    end
+    UI->>API: Request evaluation
+    API->>AI: Full analysis
+    AI-->>UI: Return scores + feedback
 
 ### Installation
 
@@ -128,3 +134,4 @@ The application uses GROQ's AI models for:
 4. Scoring interviews based on responses and timing data
 
 See the [AI Integration Documentation](./docs/ai-integration.md) for more details.
+```
