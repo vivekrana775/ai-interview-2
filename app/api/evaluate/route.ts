@@ -123,7 +123,41 @@ export async function POST(req: Request) {
 
     console.log("data response", data);
 
-    const evaluation = JSON.parse(data.choices[0].message.content);
+    let evaluation: any = "";
+
+    if (data?.choices[0]) {
+      evaluation = JSON.parse(data.choices[0].message.content);
+    }
+
+    if (!evaluation) {
+      return NextResponse.json(
+        {
+          error: "Evaluation failed due to less tokens remaining.",
+          fallbackScores: {
+            scores: {
+              technical: 0,
+              communication: 0,
+              responsiveness: 0,
+              problemSolving: 0,
+              culturalFit: 0,
+            },
+            overallScore: 0,
+            strengths: [],
+            improvements: [],
+            detailedAnalysis: {},
+            recommendation: "Evaluation unavailable",
+          },
+          metrics: {
+            responseTime: {
+              average: avgResponseTime,
+              range: [minResponseTime, maxResponseTime],
+              unit: "seconds",
+            },
+          },
+        },
+        { status: 500 }
+      );
+    }
 
     // Enhance response with additional metrics
     return NextResponse.json({

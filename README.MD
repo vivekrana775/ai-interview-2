@@ -72,7 +72,6 @@ yarn test
 ├── components/ # React components
 ├── lib/ # Utility functions
 │ └── ai.ts # AI integration functions
-├── **tests**/ # Test files
 └── ...
 \`\`\`
 
