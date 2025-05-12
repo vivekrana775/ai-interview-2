@@ -4,28 +4,36 @@ import { NextResponse } from "next/server";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { messages, jobDescription, cvText, timings } = await req.json();
+  try {
+    const { messages, jobDescription, cvText, timings } = await req.json();
 
-  // Calculate response time metrics
-  const responseTimes = timings.map((t: any) => t.duration / 1000);
-  const avgResponseTime = Math.round(
-    responseTimes.reduce((sum: number, t: number) => sum + t, 0) /
-      timings.length
-  );
-  const minResponseTime = Math.round(Math.min(...responseTimes));
-  const maxResponseTime = Math.round(Math.max(...responseTimes));
+    // Validate required fields
+    if (!messages || !timings || timings.length === 0) {
+      return NextResponse.json(
+        { error: "Missing required fields: messages and timings are required" },
+        { status: 400 }
+      );
+    }
 
-  // Weightings for each evaluation category
-  const WEIGHTS = {
-    technical: 0.3,
-    communication: 0.2,
-    responsiveness: 0.15,
-    problemSolving: 0.2,
-    culturalFit: 0.15,
-  };
+    // Calculate response time metrics
+    const responseTimes = timings.map((t: any) => t.duration / 1000);
+    const avgResponseTime = Math.round(
+      responseTimes.reduce((sum: number, t: number) => sum + t, 0) /
+        timings.length
+    );
+    const minResponseTime = Math.round(Math.min(...responseTimes));
+    const maxResponseTime = Math.round(Math.max(...responseTimes));
 
-  // Enhanced evaluation prompt with clear scoring guidelines
-  const evaluationPrompt = `You are an expert interview evaluator. Analyze this interview transcript and provide a detailed assessment based on these criteria:
+    // Weightings for each evaluation category
+    const WEIGHTS = {
+      technical: 0.3,
+      communication: 0.2,
+      responsiveness: 0.15,
+      problemSolving: 0.2,
+      culturalFit: 0.15,
+    };
+    // Enhanced evaluation prompt with clear scoring guidelines
+    const evaluationPrompt = `You are an expert interview evaluator. Analyze this interview transcript and provide a detailed assessment based on these criteria:
 
   SCORING CRITERIA:
   1. Technical Acumen (0-10): 
@@ -92,8 +100,7 @@ export async function POST(req: Request) {
     "recommendation": "Strong Hire/Hire/Neutral/No Hire with justification"
   }`;
 
-  try {
-    const response = await fetch(
+    const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
@@ -113,17 +120,45 @@ export async function POST(req: Request) {
               content: m.content,
             })),
           ],
-          temperature: 0.2, // Lower for more consistent scoring
+          temperature: 0.2,
           response_format: { type: "json_object" },
         }),
       }
     );
 
-    const data = await response.json();
-    const evaluation = JSON.parse(data.choices[0].message.content);
+    if (!groqResponse.ok) {
+      throw new Error(`Groq API error: ${groqResponse.statusText}`);
+    }
+
+    const data = await groqResponse.json();
+
+    // Validate Groq API response structure
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error("Invalid response structure from Groq API");
+    }
+
+    let evaluation;
+    try {
+      evaluation = JSON.parse(data.choices[0].message.content);
+    } catch (parseError) {
+      throw new Error("Failed to parse evaluation response");
+    }
+
+    // Validate evaluation structure
+    const requiredFields = [
+      "scores",
+      "overallScore",
+      "strengths",
+      "improvements",
+    ];
+    for (const field of requiredFields) {
+      if (!evaluation[field]) {
+        throw new Error(`Missing required field in evaluation: ${field}`);
+      }
+    }
 
     // Enhance response with additional metrics
-    return NextResponse.json({
+    const responseData = {
       ...evaluation,
       metrics: {
         ...evaluation.scores,
@@ -135,12 +170,15 @@ export async function POST(req: Request) {
         scoringWeights: WEIGHTS,
       },
       evaluationCriteria: Object.keys(WEIGHTS),
-    });
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error("Evaluation error:", error);
     return NextResponse.json(
       {
         error: "Evaluation failed",
+        message: error instanceof Error ? error.message : "Unknown error",
         fallbackScores: {
           scores: {
             technical: 0,
@@ -154,13 +192,6 @@ export async function POST(req: Request) {
           improvements: [],
           detailedAnalysis: {},
           recommendation: "Evaluation unavailable",
-        },
-        metrics: {
-          responseTime: {
-            average: avgResponseTime,
-            range: [minResponseTime, maxResponseTime],
-            unit: "seconds",
-          },
         },
       },
       { status: 500 }
